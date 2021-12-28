@@ -7,6 +7,7 @@ copy_image = b'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAABGdBTUEAAK/INwWK6
 def get_data(nip):
     api = REGONAPI("https://wyszukiwarkaregontest.stat.gov.pl/wsBIR/UslugaBIRzewnPubl.svc")
     api.login("abcde12345abcde12345")
+
     entities = api.search(nip=nip)
     addr = entities[0]['Ulica'].__str__() + ' ' + entities[0]['NrNieruchomosci'].__str__()
     if len(entities[0]['NrLokalu'].__str__()):
@@ -22,41 +23,45 @@ def clear_result():
     window.Element('-NAME-').update('')
     window.Element('-ADDR-').update('')
 
-sg.theme('LightBrown1')
-layout = [[sg.Text('NIP:', size=(5, 1)), sg.InputText(change_submits=True, size=(50,1), key='-NIP-'), sg.Button('', button_color=sg.theme_background_color(), image_data=copy_image, key='-COPY_NIP-')],
-          [sg.Text('Name:', size=(5, 1)), sg.InputText(readonly=False, size=(50,1), key='-NAME-'), sg.Button('', button_color=sg.theme_background_color(), image_data=copy_image, key='-COPY_NAME-')],
-          [sg.Text('Addr:', size=(5, 1)), sg.Multiline( no_scrollbar=True, size=(50, 2), key='-ADDR-'), sg.Button('', button_color=sg.theme_background_color(), image_data=copy_image, key='-COPY_ADDR-')],
-          [sg.Button('Clear', key='-CLEAR-')]]
-window = sg.Window("NIP", layout)
-while True:
-    event, values = window.read()
-    try:
-        nip_digits = extract_digits(values['-NIP-'])
-    except TypeError:
-        nip_digits = ''
-    if event == '-CLEAR-':
-        window.Element('-NIP-').update('')
-        clear_result()
-        continue
-    if event == '-COPY_NIP-':
-        pyperclip.copy(values['-NIP-'])
-        continue
-    if event == '-COPY_NAME-':
-        pyperclip.copy(values['-NAME-'])
-        continue
-    if event == '-COPY_ADDR-':
-        pyperclip.copy(values['-ADDR-'])
-        continue
-    if event == sg.WIN_CLOSED:
-        break
-    if len(nip_digits) == 10:
-        clear_result()
+if __name__ == '__main__':
+    last_NIP = ''
+    sg.theme('LightBrown1')
+    layout = [[sg.Text('NIP:', size=(5, 1)), sg.InputText(change_submits=True, size=(50,1), key='-NIP-'), sg.Button('', button_color=sg.theme_background_color(), image_data=copy_image, key='-COPY_NIP-')],
+              [sg.Text('Name:', size=(5, 1)), sg.InputText(readonly=False, size=(50,1), key='-NAME-'), sg.Button('', button_color=sg.theme_background_color(), image_data=copy_image, key='-COPY_NAME-')],
+              [sg.Text('Addr:', size=(5, 1)), sg.Multiline( no_scrollbar=True, size=(50, 2), key='-ADDR-'), sg.Button('', button_color=sg.theme_background_color(), image_data=copy_image, key='-COPY_ADDR-')],
+              [sg.Button('Clear', key='-CLEAR-')]]
+    window = sg.Window("NIP", layout)
+    while True:
+        event, values = window.read()
         try:
-            name, addr, end_date = get_data(nip_digits)
-            window.Element('-NAME-').update(name)
-            window.Element('-ADDR-').update(addr)
-            if end_date != '':
-                sg.PopupError('Data zakończenia działalności', end_date)
-        except REGONAPIError:
-            sg.PopupError("Błędny NIP")
-window.close()
+            nip_digits = extract_digits(values['-NIP-'])
+        except TypeError:
+            nip_digits = ''
+        if event == '-CLEAR-':
+            window.Element('-NIP-').update('')
+            clear_result()
+            last_NIP = ''
+            continue
+        if event == '-COPY_NIP-':
+            pyperclip.copy(values['-NIP-'])
+            continue
+        if event == '-COPY_NAME-':
+            pyperclip.copy(values['-NAME-'])
+            continue
+        if event == '-COPY_ADDR-':
+            pyperclip.copy(values['-ADDR-'])
+            continue
+        if event == sg.WIN_CLOSED:
+            break
+        if len(nip_digits) == 10 and nip_digits != last_NIP:
+            last_NIP = nip_digits
+            clear_result()
+            try:
+                name, addr, end_date = get_data(nip_digits)
+                window.Element('-NAME-').update(name)
+                window.Element('-ADDR-').update(addr)
+                if end_date != '':
+                    sg.PopupError('Data zakończenia działalności', end_date)
+            except REGONAPIError:
+                sg.PopupError("Błędny NIP")
+    window.close()
